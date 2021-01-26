@@ -1,31 +1,31 @@
 import asyncio
-
-import bleak.backends.bluezdbus.defs as defs
-
+import logging
+from asyncio import AbstractEventLoop
 from typing import Optional, Dict, List, Any
 
-from asyncio import AbstractEventLoop
+from bless.backends.bluezdbus.application import BlueZGattApplication
+from bless.backends.bluezdbus.characteristic import (
+    BlueZGattCharacteristic,
+    Flags
+)
+from bless.backends.bluezdbus.service import BlueZGattService
+from bless.backends.bluezdbus.utils import get_adapter
+from bless.backends.characteristic import (
+    GattCharacteristicsFlags
+)
+from bless.backends.server import BaseBlessServer
 from twisted.internet.asyncioreactor import AsyncioSelectorReactor
 from txdbus import client
 from txdbus.objects import RemoteDBusObject
 
-from bleak.backends.bluezdbus.service import BleakGATTServiceBlueZDBus
+import bleak.backends.bluezdbus.defs as defs
 from bleak.backends.bluezdbus.characteristic import (
-        BleakGATTCharacteristicBlueZDBus
-        )
+    BleakGATTCharacteristicBlueZDBus
+)
+from bleak.backends.bluezdbus.service import BleakGATTServiceBlueZDBus
 
-from bless.backends.server import BaseBlessServer
-from bless.backends.bluezdbus.utils import get_adapter
-from bless.backends.bluezdbus.application import BlueZGattApplication
-from bless.backends.bluezdbus.service import BlueZGattService
-from bless.backends.bluezdbus.characteristic import (
-        BlueZGattCharacteristic,
-        Flags
-        )
-
-from bless.backends.characteristic import (
-        GattCharacteristicsFlags
-        )
+logger = logging.getLogger(__name__)
+import uuid
 
 
 class BlessServerBlueZDBus(BaseBlessServer):
@@ -133,49 +133,53 @@ class BlessServerBlueZDBus(BaseBlessServer):
         await self.setup_task
         return await self.app.is_advertising(self.adapter)
 
-    async def add_new_service(self, uuid: str):
+    async def add_new_service(self, service_uuid: [str, uuid.UUID]):
         """
         Add a new GATT service to be hosted by the server
 
         Parameters
         ----------
-        uuid : str
+        service_uuid : str, uuid.UUID
             The UUID for the service to add
         """
         await self.setup_task
-        gatt_service: BlueZGattService = await self.app.add_service(uuid)
+
+        # Convert the type in case it is uuid.UUID
+        service_uuid = str(service_uuid).lower()
+
+        gatt_service: BlueZGattService = await self.app.add_service(service_uuid)
         dbus_obj: RemoteDBusObject = await self.bus.getRemoteObject(
                 self.app.destination,
                 gatt_service.path
-                ).asFuture(self.loop)
+        ).asFuture(self.loop)
         dict_obj: Dict = await dbus_obj.callRemote(
                 "GetAll",
                 defs.GATT_SERVICE_INTERFACE,
                 interface=defs.PROPERTIES_INTERFACE
-                ).asFuture(self.loop)
+        ).asFuture(self.loop)
         service: BleakGATTServiceBlueZDBus = BleakGATTServiceBlueZDBus(
                 dict_obj,
                 gatt_service.path
-                )
-        self.services[uuid] = service
+        )
+        self.services[service_uuid] = service
 
     async def add_new_characteristic(
             self,
-            service_uuid: str,
-            char_uuid: str,
+            service_uuid: [str, uuid.UUID],
+            char_uuid: [str, uuid.UUID],
             properties: GattCharacteristicsFlags,
             value: Optional[bytearray],
             permissions: int
-            ):
+    ):
         """
         Add a new characteristic to be associated with the server
 
         Parameters
         ----------
-        service_uuid : str
+        service_uuid : str, uuid.UUID
             The string representation of the UUID of the GATT service to which
             this new characteristic should belong
-        char_uuid : str
+        char_uuid : str, uuid.UUID
             The string representation of the UUID of the characteristic
         properties : GattCharacteristicsFlags
             GATT Characteristic Flags that define the characteristic
@@ -188,6 +192,11 @@ class BlessServerBlueZDBus(BaseBlessServer):
         """
         await self.setup_task
         flags: List[Flags] = Flags.from_bless(properties)
+        logger.debug(f"Adding new characteristic {char_uuid} to service: {service_uuid} with flags: {flags}")
+
+        # Standardize the service and char uuids
+        service_uuid = str(service_uuid).lower()
+        char_uuid = str(char_uuid).lower()
 
         # DBus can't handle None values
         if value is None:
@@ -241,20 +250,26 @@ class BlessServerBlueZDBus(BaseBlessServer):
             Whether the characteristic value was successfully updated
         """
         bless_service: BleakGATTServiceBlueZDBus = self.services[service_uuid]
-        bless_char: BleakGATTCharacteristicBlueZDBus = next(iter([
-            char for char in bless_service.characteristics
-            if char.uuid == char_uuid
-            ]))
-        cur_value: Any = bless_char.value
+        bless_char: BleakGATTCharacteristicBlueZDBus = bless_service.get_characteristic(char_uuid)
+
+        if not bless_char:
+            logger.debug("Characteristic not found, unable to update")
+            return False
+
+        logger.debug("Characteristic found, updating...")
+
+        try:
+            cur_value: Any = bless_char.value
+        except:
+            logger.debug("No set value for characteristic, unable to update")
+            return False
 
         service: BlueZGattService = next(iter([
             service for service in self.app.services
             if service.uuid == service_uuid
-            ]))
-        characteristic: BlueZGattCharacteristic = next(iter([
-            char for char in service.characteristics
-            if char.uuid == char_uuid
-            ]))
+        ]))
+
+        characteristic: BlueZGattCharacteristic = service.get_characteristic(char_uuid=char_uuid)
         characteristic.value = cur_value
 
     def read(self, char: BlueZGattCharacteristic) -> bytearray:
