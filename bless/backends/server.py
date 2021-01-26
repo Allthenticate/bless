@@ -189,7 +189,7 @@ class BaseBlessServer(abc.ABC):
                 ]
         try:
             return potentials[0]
-        except KeyError:
+        except IndexError:
             return None
 
     def read_request(self, uuid: str) -> bytearray:
