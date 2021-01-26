@@ -54,12 +54,12 @@ class BlessServerBlueZDBus(BaseBlessServer):
         """
         self.bus: client = await client.connect(
                 self.reactor, "system"
-                ).asFuture(self.loop)
+        ).asFuture(self.loop)
 
         gatt_name: str = self.name.replace(" ", "")
         self.app: BlueZGattApplication = BlueZGattApplication(
-                gatt_name, "org.bluez."+gatt_name, self.bus, self.loop
-                )
+                gatt_name, "org.bluez." + gatt_name, self.bus, self.loop
+        )
 
         self.app.Read = self.read
         self.app.Write = self.write
@@ -205,25 +205,25 @@ class BlessServerBlueZDBus(BaseBlessServer):
         # Add to our BlueZDBus app
         gatt_char: BlueZGattCharacteristic = await self.app.add_characteristic(
                 service_uuid, char_uuid, value, flags
-                )
+        )
         dbus_obj: RemoteDBusObject = await self.bus.getRemoteObject(
                 self.app.destination,
                 gatt_char.path
-                ).asFuture(self.loop)
+        ).asFuture(self.loop)
         dict_obj: Dict = await dbus_obj.callRemote(
                 "GetAll",
                 defs.GATT_CHARACTERISTIC_INTERFACE,
                 interface=defs.PROPERTIES_INTERFACE
-                ).asFuture(self.loop)
+        ).asFuture(self.loop)
 
         # Create a Bleak Characteristic
         char: BleakGATTCharacteristicBlueZDBus = (
-                BleakGATTCharacteristicBlueZDBus(
+            BleakGATTCharacteristicBlueZDBus(
                     dict_obj,
                     gatt_char.path,
                     service_uuid
-                    )
-                )
+            )
+        )
 
         # Add it to the service
         self.services[service_uuid].add_characteristic(char)
