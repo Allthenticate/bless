@@ -20,6 +20,11 @@ elif sys.platform == 'linux':
             BlessServerBlueZDBus as BlessServer
             )
 
+    # Characteristic Class
+    from bless.backends.bluezdbus.characteristic import (  # noqa: F401
+        BlueZGattCharacteristic as BlessGATTCharacteristic
+    )
+
 elif sys.platform == 'win32':
 
     # Server
