@@ -64,3 +64,18 @@ class BlueZGattService(DBusObject):
 
         self.characteristics: List[BlueZGattCharacteristic] = []
         super(BlueZGattService, self).__init__(self.path)
+
+    def get_characteristic(self, char_uuid):
+        """
+        Returns a characterisitc if found or None if it is not found
+        :param char_uuid:
+        :type char_uuid:
+        :return:
+        :rtype:
+        """
+        try:
+            return next(
+                filter(lambda x: x.uuid == str(char_uuid).lower(), self.characteristics)
+            )
+        except StopIteration:
+            return None
