@@ -3,10 +3,7 @@ import logging
 from asyncio.events import AbstractEventLoop
 from typing import Dict, Optional, List
 
-from bleak.backends.dotnet.utils import (
-        wrap_IAsyncOperation,
-        BleakDataWriter
-        )
+from bleak.backends.dotnet.utils import wrap_IAsyncOperation, BleakDataWriter
 
 from bleak.backends.dotnet.service import BleakGATTServiceDotNet
 
@@ -21,10 +18,7 @@ from bless.backends.dotnet.utils import sync_async_wrap
 # from BleakBridge import Bridge
 
 # Import of other CLR components needed.
-from Windows.Foundation import (
-        IAsyncOperation,
-        Deferral
-        )
+from Windows.Foundation import IAsyncOperation, Deferral
 
 from Windows.Storage.Streams import DataReader, DataWriter
 
@@ -41,18 +35,15 @@ from Windows.Devices.Bluetooth.GenericAttributeProfile import (
     GattReadRequest,
     GattWriteRequestedEventArgs,
     GattWriteRequest,
-    GattSubscribedClient
+    GattSubscribedClient,
 )
 
-from System import (
-        Guid,
-        Object
-        )
+from System import Guid, Object
 
 logger = logging.getLogger(__name__)
 
 
-class Request():
+class Request:
     def __init__(self):
         self._obj = None
 
@@ -90,8 +81,8 @@ class BlessServerDotNet(BaseBlessServer):
         """
 
         adv_parameters: GattServiceProviderAdvertisingParameters = (
-                GattServiceProviderAdvertisingParameters()
-                )
+            GattServiceProviderAdvertisingParameters()
+        )
         adv_parameters.IsDiscoverable = True
         adv_parameters.IsConnectable = True
 
@@ -150,20 +141,25 @@ class BlessServerDotNet(BaseBlessServer):
         logger.debug("Creating a new service with uuid: {}".format(uuid))
         guid: Guid = Guid.Parse(uuid)
         spr: GattServiceProviderResult = await wrap_IAsyncOperation(
-                IAsyncOperation[GattServiceProviderResult](
-                        GattServiceProvider.CreateAsync(guid)
-                    ),
-                return_type=GattServiceProviderResult)
+            IAsyncOperation[GattServiceProviderResult](
+                GattServiceProvider.CreateAsync(guid)
+            ),
+            return_type=GattServiceProviderResult,
+        )
         self.service_provider: GattServiceProvider = spr.ServiceProvider
         new_service: GattLocalService = self.service_provider.Service
         bleak_service = BleakGATTServiceDotNet(obj=new_service)
         logger.debug("Adding service to server with uuid {}".format(uuid))
         self.services[uuid] = bleak_service
 
-    async def add_new_characteristic(self, service_uuid: str, char_uuid: str,
-                                     properties: GattCharacteristicsFlags,
-                                     value: Optional[bytearray],
-                                     permissions: int):
+    async def add_new_characteristic(
+        self,
+        service_uuid: str,
+        char_uuid: str,
+        properties: GattCharacteristicsFlags,
+        value: Optional[bytearray],
+        permissions: int,
+    ):
         """
         Generate a new characteristic to be associated with the server
 
@@ -185,27 +181,28 @@ class BlessServerDotNet(BaseBlessServer):
         serverguid: Guid = Guid.Parse(service_uuid)
 
         ReadParameters: GattLocalCharacteristicParameters = (
-                GattLocalCharacteristicParameters()
-                )
+            GattLocalCharacteristicParameters()
+        )
         ReadParameters.CharacteristicProperties = properties
         ReadParameters.ReadProtectionLevel = permissions
 
         characteristic_result: GattLocalCharacteristicResult = (
-                await wrap_IAsyncOperation(
-                    IAsyncOperation[GattLocalCharacteristicResult](
-                        self.services.get(str(serverguid), None)
-                        .obj.CreateCharacteristicAsync(
-                            charguid, ReadParameters)
-                        ),
-                    return_type=GattLocalCharacteristicResult)
-                )
+            await wrap_IAsyncOperation(
+                IAsyncOperation[GattLocalCharacteristicResult](
+                    self.services.get(
+                        str(serverguid), None
+                    ).obj.CreateCharacteristicAsync(charguid, ReadParameters)
+                ),
+                return_type=GattLocalCharacteristicResult,
+            )
+        )
         newChar: GattLocalCharacteristic = characteristic_result.Characteristic
         newChar.ReadRequested += self.read_characteristic
         newChar.WriteRequested += self.write_characteristic
         newChar.SubscribedClientsChanged += self.subscribe_characteristic
         bleak_characteristic: BlessGATTCharacteristicDotNet = (
-                BlessGATTCharacteristicDotNet(obj=newChar)
-                )
+            BlessGATTCharacteristicDotNet(obj=newChar)
+        )
 
         service: BleakGATTServiceDotNet = self.services.get(str(serverguid))
         service.add_characteristic(bleak_characteristic)
@@ -233,26 +230,24 @@ class BlessServerDotNet(BaseBlessServer):
 
         service: BleakGATTServiceDotNet = self.services[service_uuid.lower()]
         characteristic: BlessGATTCharacteristicDotNet = next(
-                iter([
+            iter(
+                [
                     char
                     for char in service.characteristics
                     if char.uuid == char_uuid.lower()
-                    ])
-                )
+                ]
+            )
+        )
         value: bytes = characteristic.value
-        value = value if value is not None else b'\x00'
+        value = value if value is not None else b"\x00"
         with BleakDataWriter(value) as writer:
-            characteristic.obj.NotifyValueAsync(
-                    writer.detach_buffer()
-                    )
+            characteristic.obj.NotifyValueAsync(writer.detach_buffer())
 
         return True
 
     def read_characteristic(
-            self,
-            sender: GattLocalCharacteristic,
-            args: GattReadRequestedEventArgs
-            ):
+        self, sender: GattLocalCharacteristic, args: GattReadRequestedEventArgs
+    ):
         """
         The is triggered by pythonnet when windows receives a read request for
         a given characteristic
@@ -268,23 +263,20 @@ class BlessServerDotNet(BaseBlessServer):
         deferral: Deferral = args.GetDeferral()
         value: bytearray = self.read_request(str(sender.Uuid))
         logger.debug(f"Current Characteristic value {value}")
-        value = value if value is not None else b'\x00'
+        value = value if value is not None else b"\x00"
         writer: DataWriter = DataWriter()
         writer.WriteBytes(value)
         logger.debug("Getting request object {}".format(self))
         request: GattReadRequest = sync_async_wrap(
-                GattReadRequest,
-                args.GetRequestAsync
-                )
+            GattReadRequest, args.GetRequestAsync
+        )
         logger.debug("Got request object {}".format(request))
         request.RespondWithValue(writer.DetachBuffer())
         deferral.Complete()
 
     def write_characteristic(
-            self,
-            sender: GattLocalCharacteristic,
-            args: GattWriteRequestedEventArgs
-            ):
+        self, sender: GattLocalCharacteristic, args: GattWriteRequestedEventArgs
+    ):
         """
         Called by pythonnet when a write request is submitted
 
@@ -299,9 +291,8 @@ class BlessServerDotNet(BaseBlessServer):
 
         deferral: Deferral = args.GetDeferral()
         request: GattWriteRequest = sync_async_wrap(
-                GattWriteRequest,
-                args.GetRequestAsync
-                )
+            GattWriteRequest, args.GetRequestAsync
+        )
         logger.debug("Request value: {}".format(request.Value))
         reader: DataReader = DataReader.FromBuffer(request.Value)
         n_bytes: int = reader.UnconsumedBufferLength
@@ -319,11 +310,7 @@ class BlessServerDotNet(BaseBlessServer):
         logger.debug("Write Complete")
         deferral.Complete()
 
-    def subscribe_characteristic(
-            self,
-            sender: GattLocalCharacteristic,
-            args: Object
-            ):
+    def subscribe_characteristic(self, sender: GattLocalCharacteristic, args: Object):
         """
         Called when a characteristic is subscribed to
 

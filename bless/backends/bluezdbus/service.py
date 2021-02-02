@@ -8,9 +8,7 @@ from txdbus import client
 from txdbus.objects import DBusObject, DBusProperty
 from txdbus.interface import DBusInterface, Property
 
-from bless.backends.bluezdbus.characteristic import (
-        BlueZGattCharacteristic
-        )
+from bless.backends.bluezdbus.characteristic import BlueZGattCharacteristic
 
 
 class BlueZGattService(DBusObject):
@@ -21,10 +19,10 @@ class BlueZGattService(DBusObject):
     interface_name: str = defs.GATT_SERVICE_INTERFACE
 
     iface: DBusInterface = DBusInterface(
-            interface_name,
-            Property("UUID", "s"),
-            Property("Primary", "b"),
-            )
+        interface_name,
+        Property("UUID", "s"),
+        Property("Primary", "b"),
+    )
 
     dbusInterfaces: List[DBusInterface] = [iface]
 
@@ -32,12 +30,12 @@ class BlueZGattService(DBusObject):
     primary: DBusProperty = DBusProperty("Primary")
 
     def __init__(
-            self,
-            uuid: str,
-            primary: bool,
-            index: int,
-            app: 'BlueZGattApplication',  # noqa: F821
-            ):
+        self,
+        uuid: str,
+        primary: bool,
+        index: int,
+        app: "BlueZGattApplication",  # noqa: F821
+    ):
         """
         Initialize the DBusObject
 
@@ -60,7 +58,7 @@ class BlueZGattService(DBusObject):
         self.uuid: str = uuid
         self.primary: bool = primary
         self.loop: asyncio.AbstractEventLoop = app.loop
-        self.app: 'BlueZGattApplication' = app  # noqa: F821
+        self.app: "BlueZGattApplication" = app  # noqa: F821
 
         self.characteristics: List[BlueZGattCharacteristic] = []
         super(BlueZGattService, self).__init__(self.path)

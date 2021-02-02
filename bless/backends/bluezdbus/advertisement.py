@@ -19,15 +19,15 @@ class BlueZLEAdvertisement(DBusObject):
     interface_name: str = "org.bluez.LEAdvertisement1"
 
     iface: DBusInterface = DBusInterface(
-            interface_name,
-            Method("Release"),
-            Property("Type", "s"),
-            Property("ServiceUUIDs", "as"),
-            Property("ManufacturerData", "a{qay}"),
-            Property("SolicitUUIDs", "as"),
-            Property("ServiceData", "a{sv}"),
-            Property("IncludeTxPower", "b")
-            )
+        interface_name,
+        Method("Release"),
+        Property("Type", "s"),
+        Property("ServiceUUIDs", "as"),
+        Property("ManufacturerData", "a{qay}"),
+        Property("SolicitUUIDs", "as"),
+        Property("ServiceData", "a{sv}"),
+        Property("IncludeTxPower", "b"),
+    )
 
     dbusInterfaces: List[DBusInterface] = [iface]
 
@@ -39,11 +39,11 @@ class BlueZLEAdvertisement(DBusObject):
     include_tx_power: DBusProperty = DBusProperty("IncludeTxPower")
 
     def __init__(
-            self,
-            advertising_type: Type,
-            index: int,
-            app: "BlueZGattApplication"  # noqa: F821
-            ):
+        self,
+        advertising_type: Type,
+        index: int,
+        app: "BlueZGattApplication",  # noqa: F821
+    ):
         """
         New Low Energy Advertisement
 
@@ -61,8 +61,8 @@ class BlueZLEAdvertisement(DBusObject):
 
         self.service_uuids: List[str] = []
         self.manufacturer_data: Dict = {}
-        self.solicit_uuids = ['']
-        self.service_data = {'': 0}
+        self.solicit_uuids = [""]
+        self.service_data = {"": 0}
 
         self.include_tx_power: bool = False
 

@@ -1,8 +1,6 @@
 from enum import Flag
 
-from bleak.backends.dotnet.characteristic import (
-        BleakGATTCharacteristicDotNet
-        )
+from bleak.backends.dotnet.characteristic import BleakGATTCharacteristicDotNet
 
 
 class CBAttributePermissions(Flag):
@@ -12,16 +10,14 @@ class CBAttributePermissions(Flag):
     write_encryption_required = 0x8
 
 
-class BlessGATTCharacteristicDotNet(
-        BleakGATTCharacteristicDotNet
-        ):
+class BlessGATTCharacteristicDotNet(BleakGATTCharacteristicDotNet):
     """
     DotNet implementation of the BlessGATTCharacteristic
     """
 
     def __init__(self, obj):
         super().__init__(obj)
-        self._value: bytearray = bytearray(b'')
+        self._value: bytearray = bytearray(b"")
 
     @property
     def value(self) -> bytearray:
