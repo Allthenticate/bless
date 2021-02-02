@@ -1,7 +1,7 @@
 import abc
 import asyncio
 import logging
-
+import uuid
 
 from asyncio import AbstractEventLoop
 from typing import Any, Optional, Dict, Callable, List, Union
@@ -161,7 +161,7 @@ class BaseBlessServer(abc.ABC):
         """
         raise NotImplementedError()
 
-    def get_characteristic(self, uuid: str) -> Union[
+    def get_characteristic(self, uuid: Union[str, uuid.UUID]) -> Union[
             BlessGATTCharacteristic,
             None
             ]:
@@ -180,7 +180,7 @@ class BaseBlessServer(abc.ABC):
         BlessGATTCharacteristic
             The characteristic object
         """
-        uuid = uuid.lower()
+        uuid = str(uuid).lower()
         potentials: List[BlessGATTCharacteristic] = [
                 self.services[service_uuid].get_characteristic(uuid)
                 for service_uuid in self.services
