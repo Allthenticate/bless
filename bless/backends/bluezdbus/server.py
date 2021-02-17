@@ -339,5 +339,95 @@ class BlessServerBlueZDBus(BaseBlessServer):
             return False
         logger.info(f"Disconnected from {device_path} successfully!")
         return True
+
+    async def set_connected_callback(self, callback_function) -> bool:
+        """
+        Assigns a callback function to the InterfacesAdded member of the DBus Object manager, note that the
+        callback function will be passed a `txdbus.message.SignalMessage` object.
+        :param callback_function:
+        :type callback_function: function
+        :return: `True` if callback function added successfully, `False`, otherwise
+        :rtype: bool
+        """
+        if not callable(callback_function):
+            logger.info("Callback function is not valid! Must be a function!")
             return False
+
+        logger.info(f"Setting up connected callback function: {callback_function}")
+        self.connected_callback = callback_function
+        try:
+            await self.bus.addMatch(
+                    self.connected_callback,
+                    interface="org.freedesktop.DBus.ObjectManager",
+                    member="InterfacesAdded",
+            ).asFuture(self.loop)
+        except Exception:
+            logger.exception("Unable to setup connected callback")
+            return False
+        logger.info("Connected callback setup successfully!")
         return True
+
+    async def set_disconnected_callback(self, callback_function) -> bool:
+        """
+        Assigns a callback function to the InterfacesRemoved member of the DBus Object manager, note that the
+        callback function will be passed a `txdbus.message.SignalMessage` object.
+        :param callback_function:
+        :type callback_function: function
+        :return: `True` if callback function added successfully, `False`, otherwise
+        :rtype: bool
+        """
+        if not callable(callback_function):
+            logger.info("Callback function is not valid! Must be a function!")
+            return False
+
+        logger.info(f"Setting up disconnect callback function: {callback_function}")
+        self.disconnected_callback = callback_function
+        try:
+            await self.bus.addMatch(
+                    self.disconnected_callback,
+                    interface="org.freedesktop.DBus.ObjectManager",
+                    member="InterfacesRemoved",
+            ).asFuture(self.loop)
+        except Exception:
+            logger.exception("Unable to setup disconnect callback")
+            return False
+        logger.info("Disconnect callback setup successfully!")
+        return True
+
+    # TODO(Bernie): This was a possible callback route, keeping for future reference
+    # def _parse_properties_changed(self, message):
+    #     """
+    #     This is a work in progress for parsing properties changed
+    #     :param message:
+    #     :type message:
+    #     :return:
+    #     :rtype:
+    #     """
+    #     if message.member == "PropertiesChanged":
+    #         # logger.debug('Got properties changed message!')
+    #         interface, changed, invalidated = message.body
+    #
+    #         # Make sure that it was on the right interface
+    #         if interface != defs.DEVICE_INTERFACE:
+    #             return
+    #
+    #         # The changed dict contains what changed
+    #         if "Connected" in changed.keys():
+    #             if not changed.get("Connected"):
+    #                 logger.debug("A device disconnected!")
+    #
+    #                 # self.disconnected_callback(message)
+    #                 return
+    #
+    #         else:
+    #             # logger.debug("Reached properties changed message we aren't interested in, returning")
+    #             return
+    #     else:
+    #         logger.info(f"Unexpected message off the dbus: {message.member}")
+    #
+    # async def setup_properties_changed(self):
+    #     await self.bus.addMatch(
+    #             self._parse_properties_changed,
+    #             interface="org.freedesktop.DBus.Properties",
+    #             member="PropertiesChanged",
+    #     ).asFuture(self.loop)
