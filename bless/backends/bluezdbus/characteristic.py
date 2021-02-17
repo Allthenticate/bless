@@ -141,10 +141,11 @@ class BlueZGattCharacteristic(DBusObject):
         bytearray
             The bytearray that is the value of the characteristic
         """
+        print(f"Read options: {options}")
         f = self._service.app.Read
         if f is None:
             raise NotImplementedError()
-        return f(self)
+        return f(self, options)
 
     @dbusMethod(interface_name, "WriteValue")
     def WriteValue(self, value: bytearray, options: Dict):  # noqa: N802
@@ -159,10 +160,11 @@ class BlueZGattCharacteristic(DBusObject):
         options : Dict
             Some options for you to select from
         """
+        print(f"Write options: {options}")
         f = self._service.app.Write
         if f is None:
             raise NotImplementedError()
-        f(self, value)
+        f(self, value, options)
 
     @dbusMethod(interface_name, "StartNotify")
     def StartNotify(self):  # noqa: N802

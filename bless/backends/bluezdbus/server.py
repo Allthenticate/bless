@@ -40,19 +40,20 @@ class BlessServerBlueZDBus(BaseBlessServer):
         self.services: Dict[str, BleakGATTServiceBlueZDBus] = {}
 
         # Keep track of the hardware path to the adapter
-        if kwargs.get('path'):
+        if kwargs.get("path"):
             self.adapter_path = f"/org/bluez/{kwargs.get('path')}/"
             logger.debug(f"Adapter path specified: {self.adapter_path}")
         else:
             self.adapter_path = "/org/bluez/hci0/"
-            logger.debug(f"No adapter path specified, defaulting to: {self.adapter_path}")
+            logger.debug(
+                f"No adapter path specified, defaulting to: {self.adapter_path}"
+            )
 
         self.setup_task: asyncio.Task = self.loop.create_task(self.setup())
 
         # Callback functions
         self.connected_callback = lambda _: None
         self.disconnected_callback = lambda _: None
-
 
     async def setup(self):
         """
@@ -329,10 +330,10 @@ class BlessServerBlueZDBus(BaseBlessServer):
         logger.debug(f"Attempting to disconnect from: {device_path}")
         try:
             await self.bus.callRemote(
-                    device_path,
-                    "Disconnect",
-                    interface=defs.DEVICE_INTERFACE,
-                    destination=defs.BLUEZ_SERVICE,
+                device_path,
+                "Disconnect",
+                interface=defs.DEVICE_INTERFACE,
+                destination=defs.BLUEZ_SERVICE,
             ).asFuture(self.loop)
         except Exception:
             logger.exception(f"Attempt to disconnect central {device_mac} failed!")
@@ -357,9 +358,9 @@ class BlessServerBlueZDBus(BaseBlessServer):
         self.connected_callback = callback_function
         try:
             await self.bus.addMatch(
-                    self.connected_callback,
-                    interface="org.freedesktop.DBus.ObjectManager",
-                    member="InterfacesAdded",
+                self.connected_callback,
+                interface="org.freedesktop.DBus.ObjectManager",
+                member="InterfacesAdded",
             ).asFuture(self.loop)
         except Exception:
             logger.exception("Unable to setup connected callback")
@@ -384,9 +385,9 @@ class BlessServerBlueZDBus(BaseBlessServer):
         self.disconnected_callback = callback_function
         try:
             await self.bus.addMatch(
-                    self.disconnected_callback,
-                    interface="org.freedesktop.DBus.ObjectManager",
-                    member="InterfacesRemoved",
+                self.disconnected_callback,
+                interface="org.freedesktop.DBus.ObjectManager",
+                member="InterfacesRemoved",
             ).asFuture(self.loop)
         except Exception:
             logger.exception("Unable to setup disconnect callback")
