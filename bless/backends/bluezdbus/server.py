@@ -39,7 +39,20 @@ class BlessServerBlueZDBus(BaseBlessServer):
 
         self.services: Dict[str, BleakGATTServiceBlueZDBus] = {}
 
+        # Keep track of the hardware path to the adapter
+        if kwargs.get('path'):
+            self.adapter_path = f"/org/bluez/{kwargs.get('path')}/"
+            logger.debug(f"Adapter path specified: {self.adapter_path}")
+        else:
+            self.adapter_path = "/org/bluez/hci0/"
+            logger.debug(f"No adapter path specified, defaulting to: {self.adapter_path}")
+
         self.setup_task: asyncio.Task = self.loop.create_task(self.setup())
+
+        # Callback functions
+        self.connected_callback = lambda _: None
+        self.disconnected_callback = lambda _: None
+
 
     async def setup(self):
         """
@@ -300,3 +313,31 @@ class BlessServerBlueZDBus(BaseBlessServer):
             The value being requested to set
         """
         return self.write_request(char.uuid, value)
+
+    async def disconnect(self, device_mac: str) -> bool:
+        """
+        Disconnect from a connected central via the mac address of the device by sending a commmand
+        over the session bus to disconnect.
+        :param device_mac: mac address of the device to disconnect from
+        :type device_mac: str
+        :return: `True`, If successful disconnect, `False` otherwise
+        :rtype: bool
+        """
+        # Convert the mac to the device path on the session bus
+        device_path = f"{self.adapter_path}dev_{device_mac.replace(':', '_')}"
+
+        logger.debug(f"Attempting to disconnect from: {device_path}")
+        try:
+            await self.bus.callRemote(
+                    device_path,
+                    "Disconnect",
+                    interface=defs.DEVICE_INTERFACE,
+                    destination=defs.BLUEZ_SERVICE,
+            ).asFuture(self.loop)
+        except Exception:
+            logger.exception(f"Attempt to disconnect central {device_mac} failed!")
+            return False
+        logger.info(f"Disconnected from {device_path} successfully!")
+        return True
+            return False
+        return True
